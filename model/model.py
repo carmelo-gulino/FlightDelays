@@ -1,3 +1,5 @@
+import copy
+
 import networkx as nx
 
 from database.DAO import DAO
@@ -29,7 +31,7 @@ class Model:
                 if self._grafo.has_edge(v0, v1):  #se l'arco esiste già
                     self._grafo[v0, v1]['weight'] += peso  #aggiungo il peso a quello già esistente
                 else:
-                    self._grafo.add_edge(v0, v1, weight=peso)   #altrimenti aggiungo l'arco e il peso
+                    self._grafo.add_edge(v0, v1, weight=peso)  #altrimenti aggiungo l'arco e il peso
         print(self._grafo)
 
     def add_edges_v2(self):
@@ -61,3 +63,81 @@ class Model:
             vicini_tuple.append((v, self._grafo[v0][v]['weight']))
         vicini_tuple.sort(key=lambda tupla: tupla[1], reverse=True)
         return vicini_tuple
+
+    def esiste_percorso(self, v0, v1):
+        connessa = nx.node_connected_component(self._grafo, v0)
+        if v1 in connessa:
+            return True
+        return False
+
+    def trova_cammino_dijkstra(self, v0, v1):
+        """
+        Trova il cammino ottimo tramite dijkstra
+        """
+        return nx.dijkstra_path(self._grafo, v0, v1)
+
+    def trova_cammino_BFS(self, v0, v1):
+        """
+        Trova una cammino BFS e poi aggiunge i nodi ad una lista
+        """
+        tree = nx.bfs_tree(self._grafo, v0)
+        if v1 in tree:
+            print(f"{v1} è presente nell'albero di visita BFS")
+        path = [v1]  #tree è un grafo ma io voglio una lista di nodi, quindi vado a ritroso prendendo i predecessori
+        while path[-1] != v0:  #aggiungo i predecessori a una lista di nodi
+            path.append(list(tree.predecessors(path[-1]))[0])  #ogni volta aggiungo il predecessore
+        path.reverse()
+        return path
+
+    def trova_cammino_DFS(self, v0, v1):
+        """
+        Trova una cammino DFS e poi aggiunge i nodi a una lista
+        """
+        tree = nx.dfs_tree(self._grafo, v0)
+        if v1 in tree:
+            print(f"{v1} è presente nell'albero di visita BFS")
+        path = [v1]  #tree è un grafo ma io voglio una lista di nodi, quindi vado a ritroso prendendo i predecessori
+        while path[-1] != v0:  #aggiungo i predecessori a una lista di nodi
+            path.append(list(tree.predecessors(path[-1]))[0])  #ogni volta aggiungo il predecessore
+        path.reverse()
+        return path
+
+    def get_cammino_ottimo(self, v0, v1, t):
+        """
+        Trova il cammino ottimo tramite un algoritmo ricorsivo e lo restituisce
+        :param v0: partenza
+        :param v1: arrivo
+        :param t: lunghezza massima del percorso
+        """
+        self.best_path = []
+        self.best_obj_fun = 0
+        parziale = [v0]
+        self.ricorsione(parziale, v1, t)
+        return self.best_path, self.best_obj_fun
+
+    def ricorsione(self, parziale, target, t):
+        """
+        :param parziale: lista di nodi
+        :param target: nodo di arrivo
+        :param t: lunghezza di parziale
+        """
+        if self.get_obj_fun(parziale) > self.best_obj_fun and parziale[-1] == target:
+            self.best_obj_fun = self.get_obj_fun(parziale)
+            self.best_path = copy.deepcopy(parziale)
+            return
+        if len(parziale) == t+1:
+            return  #se parziale ha lunghezza t esco anche se non è una soluzione migliore
+        for n in self._grafo.neighbors(parziale[-1]):   #itero sui i vicini dell'ultimo aggiunto
+            if n not in parziale:   #controllo se ci sono già passato
+                parziale.append(n)  #aggiungo il nodo
+                self.ricorsione(parziale, target, t)
+                parziale.pop()
+
+    def get_obj_fun(self, nodes):
+        """
+        Itera sui nodi, calcola la somma degli archi e la restituisce
+        """
+        val = 0
+        for i in range(len(nodes)-1):
+            val = self._grafo[nodes[i]][nodes[i+1]]['weight']   #itero sui nodi ma considero gli archi
+        return val

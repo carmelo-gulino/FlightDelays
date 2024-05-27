@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import flet as ft
 
 
@@ -17,6 +19,10 @@ class Controller:
         except ValueError:
             self._view.create_alert("Inserire un intero")
             return
+        self._view._ddAeroportoP.disabled = False
+        self._view._ddAeroportoA.disabled = False
+        self._view._btnConnessi.disabled = False
+        self._view._btnPercorso.disabled = False
         self._model.build_graph(n_min)
         self._view.txt_result.controls.append(ft.Text(f"Num nodi: {self._model.get_num_nodi()}"))
         self._view.txt_result.controls.append(ft.Text(f"Num archi: {self._model.get_num_archi()}"))
@@ -50,6 +56,7 @@ class Controller:
             self._choice_aeroportoA = e.control.data
 
     def handleConnessi(self, e):
+        self._view.txt_result.controls.clear()
         if self._choice_aeroportoP is None:
             self._view.create_alert("Selezionare un aeroporto di partenza")
             return
@@ -61,4 +68,33 @@ class Controller:
             self._view.update_page()
 
     def handleCercaItinerario(self, e):
-        pass
+        self._view.txt_result.controls.clear()
+        v0 = self._choice_aeroportoP
+        v1 = self._choice_aeroportoA
+        t = int(self._view._txtInNumTratte.value)
+        tic = datetime.now()
+        path, nodi = self._model.get_cammino_ottimo(v0, v1, t)
+        self._view.txt_result.controls.append(ft.Text(f"Cammino di {t} tratte trovato "
+                                                      f"in {datetime.now() - tic} secondi"))
+        self._view.txt_result.controls.append(ft.Text(f"Tratte:"))
+        for p in path:
+            self._view.txt_result.controls.append(ft.Text(f"{p}"))
+        self._view.txt_result.controls.append(ft.Text(f"Numero totale di voli: {nodi}"))
+        self._view.update_page()
+
+
+    def handleTestConnessione(self, e):
+        self._view.txt_result.controls.clear()
+        self._view._txtInNumTratte.disabled = False
+        self._view._btnCercaItinerario.disabled = False
+        v0 = self._choice_aeroportoP
+        v1 = self._choice_aeroportoA
+        if not self._model.esiste_percorso(v0, v1):
+            self._view.txt_result.controls.append(ft.Text(f"Non esiste un percorso fra {v0} e {v1}"))
+        else:
+            self._view.txt_result.controls.append(ft.Text(f"Esiste un percorso fra {v0} e {v1}"))
+            path = self._model.trova_cammino_BFS(v0, v1)
+            self._view.txt_result.controls.append(ft.Text(f"Il cammino con minor numero di archi fra {v0} e {v1} è:"))
+            for p in path:
+                self._view.txt_result.controls.append(ft.Text(f"{p}"))
+            self._view.update_page()
